@@ -1,7 +1,8 @@
 const notp = require('notp'),
     fs = require('fs'),
     base32 = require('thirty-two'),
-    jsonfile = require('jsonfile')
+    jsonfile = require('jsonfile'),
+    schedule = require('node-schedule')
 if (!fs.existsSync('./config.json')) {
     console.error('no config.json')
     process.exit()
@@ -24,30 +25,60 @@ bot.onText(/\/start/, (msg) => {
 });
 bot.onText(/\/add/, (msg) => {
     status[msg.chat.id] = {}
-    status[msg.chat.id].status = 'getSecret'
+    status[msg.chat.id].status = "getSecret"
     bot.sendMessage(msg.chat.id, `輸入您的 secret 或是送出一張 QRCode`, { reply_to_message_id: msg.message_id });
 });
 bot.onText(/\/cencel/, (msg) => {
     status[msg.chat.id].status = false
     bot.sendMessage(msg.chat.id, `已取消`, { reply_to_message_id: msg.message_id });
 });
-bot.on('message', msg => {
+bot.onText(/\/get/, (msg) => {
+    let resp = `驗證碼：\n`
+    for (let i in data[msg.chat.id].secret) {
+        let name = data[msg.chat.id].secret[i].name,
+            key = notp.totp.gen(data[msg.chat.id].secret[i].secret)
+        resp += `<code>${key}</code> (${name})\n`
+    }
+    bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+});
+bot.on('message', (msg) => {
+    if (!data[msg.chat.id])
+        data[msg.chat.id] = { "secret": [] }
     if (status[msg.chat.id]) {
-        if (status[msg.chat.id].status == 'getSecret') {
-            status[msg.chat.id].status = "setName"
-            status[msg.chat.id].data = msg.text
-            let nowkey = notp.totp.gen(msg.text)
-            bot.sendMessage(msg.chat.id, `目前的驗證碼是：<code>${nowkey}</code>
-請輸入一個名稱：`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
-        }
-        if (status[msg.chat.id].status == "setName") {
-            data[msg.chat.id].secret.push({
-                "name": msg.text,
-                "secret": status[msg.chat.id].data
-            })
-            bot.sendMessage(msg.chat.id, `${msg.text} 設定完成！`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
-            status[msg.chat.id].status = false
+        let userData = userStatus(msg.chat.id)
+        let status = userData.status
+        switch (status) {
+            case "getSecret":
+                userStatus(msg.chat.id, { status: "setName", data: msg.text })
+                let nowkey = notp.totp.gen(msg.text)
+                bot.sendMessage(msg.chat.id, `目前的驗證碼是：<code>${nowkey}</code>\n請輸入一個名稱：`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+                break;
+            case "setName":
+                userStatus(msg.chat.id, { status: false })
+                bot.sendMessage(msg.chat.id, `${msg.text} 設定完成！`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+                data[msg.chat.id].secret.push({
+                    "name": msg.text,
+                    "secret": userData.data
+                })
+                break;
+            default:
+                userStatus(msg.chat.id, { status: false })
         }
     } else
-        status[msg.chat.id] = {}
+        userStatus(msg.chat.id, { status: false })
+})
+
+schedule.scheduleJob('30 * * * * *', () => {
+    console.log('data.json saved.')
+    jsonfile.writeFileSync('data.json', data, { spaces: 2, EOL: '\r\n' })
+});
+
+function userStatus(id, data) {
+    if (data) status[id] = data
+    else return status[id]
+}
+
+// 報錯處理
+process.on("uncaughtException", err => {
+    console.log(err);
 });
