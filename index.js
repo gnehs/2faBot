@@ -8,7 +8,7 @@ if (!fs.existsSync('./config.json')) {
     process.exit()
 }
 if (!fs.existsSync('./data.json')) {
-    jsonfile.writeFileSync('data.json', { "hello": true }, { spaces: 2, EOL: '\r\n' })
+    jsonfile.writeFileSync('data.json', {})
     console.log('created data.json')
 }
 var config = jsonfile.readFileSync('./config.json')
@@ -32,7 +32,7 @@ bot.onText(/\/cencel/, (msg) => {
     status[msg.chat.id].status = false
     bot.sendMessage(msg.chat.id, `已取消`, { reply_to_message_id: msg.message_id });
 });
-bot.onText(/\/get/, (msg) => {
+bot.onText(/\/get/, msg => {
     let resp = `驗證碼：\n`
     for (let i in data[msg.chat.id].secret) {
         let name = data[msg.chat.id].secret[i].name,
@@ -40,6 +40,39 @@ bot.onText(/\/get/, (msg) => {
         resp += `<code>${key}</code> (${name})\n`
     }
     bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+});
+bot.onText(/\/del/, msg => {
+    let inline_keyboard = []
+    for (let i in data[msg.chat.id].secret) {
+        let name = data[msg.chat.id].secret[i].name
+        inline_keyboard.push([{
+            text: `❌ ${name}`,
+            callback_data: JSON.stringify({
+                "action": "del",
+                "data": { "name": name, "index": i }
+            })
+        }])
+    }
+    let opts = { reply_markup: { inline_keyboard: inline_keyboard }, reply_to_message_id: msg.message_id };
+    let resp = data[msg.chat.id].secret.length > 0 ? '尼今天要殺誰啊' : '沒東西能殺ㄌ'
+    bot.sendMessage(msg.from.id, resp, opts);
+});
+bot.on('callback_query', callbackQuery => {
+    const callbackData = JSON.parse(callbackQuery.data);
+    const msg = callbackQuery.message;
+    if (callbackData.action == "del") {
+        console.log(callbackData)
+        for (let i in data[msg.chat.id].secret) {
+            if (data[msg.chat.id].secret[i].name == callbackData.data.name) {
+                data[msg.chat.id].secret.splice(i, 1)
+            }
+        }
+        bot.editMessageText(`${callbackData.data.name} 殺好了喔！`, {
+            parse_mode: "HTML",
+            chat_id: msg.chat.id,
+            message_id: msg.message_id,
+        });
+    }
 });
 bot.on('message', (msg) => {
     if (!data[msg.chat.id])
@@ -70,15 +103,10 @@ bot.on('message', (msg) => {
 
 schedule.scheduleJob('30 * * * * *', () => {
     console.log('data.json saved.')
-    jsonfile.writeFileSync('data.json', data, { spaces: 2, EOL: '\r\n' })
+    jsonfile.writeFileSync('data.json', data)
 });
 
 function userStatus(id, data) {
     if (data) status[id] = data
     else return status[id]
 }
-
-// 報錯處理
-process.on("uncaughtException", err => {
-    console.log(err);
-});
