@@ -1,0 +1,27 @@
+{
+    "name": "2fabot",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "dependencies": {
+        "jsonfile": "^5.0.0",
+        "node-telegram-bot-api": "^0.30.0",
+        "notp": "^2.0.3",
+        "thirty-two": "^1.0.2"
+    },
+    "devDependencies": {},
+    "scripts": {
+        "test": "nodemon index.js",
+        "start": "node index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gnehs/2faBot.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/gnehs/2faBot/issues"
+    },
+    "homepage": "https://github.com/gnehs/2faBot#readme"
+}
