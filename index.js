@@ -16,10 +16,10 @@ var data = jsonfile.readFileSync('./data.json')
 var status = {}
 const bot = new(require('node-telegram-bot-api'))(config.token, { polling: true });
 bot.onText(/\/start/, (msg) => {
-    let resp = `尼好，我是 2FA 機器人
-/add 來新增一個驗證碼
-/del [id] 來移除驗證碼
-/get 來取得驗證碼
+    let resp = `尼好，這裡是 2FA 機器人
+/add 新增驗證碼
+/del 移除驗證碼
+/get 取得驗證碼
 /cencel 取消`
     bot.sendMessage(msg.chat.id, resp, { reply_to_message_id: msg.message_id });
 });
@@ -39,6 +39,7 @@ bot.onText(/\/get/, msg => {
             key = notp.totp.gen(data[msg.chat.id].secret[i].secret)
         resp += `<code>${key}</code> (${name})\n`
     }
+    resp = data[msg.chat.id].secret.length > 0 ? resp : '尼沒新增驗證碼要拿什麼ㄋ\n使用 /add 新增驗證碼'
     bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
 });
 bot.onText(/\/del/, msg => {
@@ -54,14 +55,13 @@ bot.onText(/\/del/, msg => {
         }])
     }
     let opts = { reply_markup: { inline_keyboard: inline_keyboard }, reply_to_message_id: msg.message_id };
-    let resp = data[msg.chat.id].secret.length > 0 ? '尼今天要殺誰啊' : '沒東西能殺ㄌ'
+    let resp = data[msg.chat.id].secret.length > 0 ? '尼今天要殺誰啊' : '沒東西能殺ㄌ\n使用 /add 新增驗證碼'
     bot.sendMessage(msg.from.id, resp, opts);
 });
 bot.on('callback_query', callbackQuery => {
     const callbackData = JSON.parse(callbackQuery.data);
     const msg = callbackQuery.message;
     if (callbackData.action == "del") {
-        console.log(callbackData)
         for (let i in data[msg.chat.id].secret) {
             if (data[msg.chat.id].secret[i].name == callbackData.data.name) {
                 data[msg.chat.id].secret.splice(i, 1)
@@ -88,7 +88,7 @@ bot.on('message', (msg) => {
                 break;
             case "setName":
                 userStatus(msg.chat.id, { status: false })
-                bot.sendMessage(msg.chat.id, `${msg.text} 設定完成！`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+                bot.sendMessage(msg.chat.id, `${msg.text} 設定完成！\n使用 /get 取得驗證碼`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
                 data[msg.chat.id].secret.push({
                     "name": msg.text,
                     "secret": userData.data
