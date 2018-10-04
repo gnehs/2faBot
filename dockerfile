@@ -13,4 +13,5 @@ ENV NODE_ENV=production
 RUN apk add --no-cache tzdata
 ENV TZ=Asia/Taipei
 # 啟動
+
 CMD ["npm", "start"]
