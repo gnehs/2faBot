@@ -122,7 +122,7 @@ bot.on('message', async(msg) => {
         let status = userData.status
         switch (status) {
             case "getSecret":
-                let otpauth = /otpauth:\/\/totp\/(.+).secret=(.+)(&|\Z)/
+                let otpauth = /otpauth:\/\/totp\/(.+).secret=([^&\n]+)(?:.*)/
                 if (msg.text.match(otpauth)) {
                     let resp = ``
                     try {
