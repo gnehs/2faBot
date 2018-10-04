@@ -83,13 +83,13 @@ bot.on('message', async(msg) => {
         let status = userData.status
         switch (status) {
             case "getSecret":
-                let otpauth = /otpauth:\/\/totp\/(.+).secret=(.+)\&|otpauth:\/\/totp\/(.+).secret=(.+)/
+                let otpauth = /otpauth:\/\/totp\/(.+).secret=(.+)(&|\Z)/
                 if (msg.text.match(otpauth)) {
                     let resp = ``
                     try {
                         let key = msg.text.match(otpauth)[2];
                         let name = msg.text.match(otpauth)[1];
-                        name = name.match(":") ? name.replace(/:/g, ' /') : name
+                        name = name.match(":") ? name.replace(/:/g, '/') : name
                         key = base32.decode(key)
                         let nowkey = notp.totp.gen(key)
                         data[msg.chat.id].secret.push({
