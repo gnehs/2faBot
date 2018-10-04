@@ -15,20 +15,59 @@ var config = jsonfile.readFileSync('./config.json')
 var data = jsonfile.readFileSync('./data.json')
 var status = {}
 const bot = new(require('node-telegram-bot-api'))(config.token, { polling: true });
-bot.onText(/\/start/, (msg) => {
-    let resp = `尼好，這裡是 2FA 機器人
+bot.onText(/\/start$|\/help$/, msg => {
+    let resp = `
+=尼好，這裡是 2FA 機器人=
 /add 新增驗證碼
 /del 移除驗證碼
 /get 取得驗證碼
 /cencel 取消`
+    resp += config.admin.includes(msg.chat.id) ? `
+/adduser [userid] 新增使用者
+/deluser [userid] 刪除使用者` : ``
     bot.sendMessage(msg.chat.id, resp, { reply_to_message_id: msg.message_id });
 });
-bot.onText(/\/add/, (msg) => {
-    status[msg.chat.id] = {}
-    status[msg.chat.id].status = "getSecret"
-    bot.sendMessage(msg.chat.id, `輸入您的 secret 或是送出一張 otpauth:// 格式的連結`, { reply_to_message_id: msg.message_id });
+
+bot.onText(/\/add$/, msg => {
+    let resp;
+    if (config.admin.includes(msg.chat.id) || config.user.includes(msg.chat.id)) {
+        status[msg.chat.id] = {}
+        status[msg.chat.id].status = "getSecret"
+        resp = `輸入您的 secret 或是送出一個 otpauth:// 格式的連結`
+    } else {
+        resp = `尼無權限使用本功能，聯絡管理員並提供此 ID 來使用本機器人 <code>${msg.user.id}</code>`
+    }
+    bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
 });
-bot.onText(/\/cencel/, (msg) => {
+bot.onText(/\/adduser (.+)/, (msg, match) => {
+    let resp;
+    if (config.admin.includes(msg.chat.id)) {
+        config.user.push(Number(match[1]))
+        jsonfile.writeFileSync('config.json', config)
+        resp = `<code>${Number(match[1])}</code> 已加入使用者清單`
+    } else {
+        resp = `尼無權限使用本功能`
+    }
+    bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+});
+bot.onText(/\/deluser (.+)/, (msg, match) => {
+    let resp;
+    if (config.admin.includes(msg.chat.id)) {
+        for (let i in config.user) {
+            if (config.user[i] == Number(match[1])) {
+                config.user.splice(i, 1)
+                resp = `<code>${Number(match[1])}</code> 殺好了喔！`
+                continue;
+            } else
+                resp = `找不到該使用者`
+        }
+        jsonfile.writeFileSync('config.json', config)
+    } else {
+        resp = `尼無權限使用本功能`
+    }
+    bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+});
+bot.onText(/\/cencel/, msg => {
     status[msg.chat.id].status = false
     bot.sendMessage(msg.chat.id, `已取消`, { reply_to_message_id: msg.message_id });
 });
@@ -43,7 +82,7 @@ bot.onText(/\/get/, msg => {
     resp = data[msg.chat.id].secret.length > 0 ? resp : '尼沒新增驗證碼要拿什麼ㄋ\n使用 /add 新增驗證碼'
     bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
 });
-bot.onText(/\/del/, msg => {
+bot.onText(/\/del$/, msg => {
     let inline_keyboard = []
     for (let i in data[msg.chat.id].secret) {
         let name = data[msg.chat.id].secret[i].name
@@ -68,7 +107,7 @@ bot.on('callback_query', callbackQuery => {
                 data[msg.chat.id].secret.splice(i, 1)
             }
         }
-        bot.editMessageText(`${callbackData.data.name} 殺好了喔！`, {
+        bot.editMessageText(`<code>${callbackData.data.name}</code> 殺好了喔！`, {
             parse_mode: "HTML",
             chat_id: msg.chat.id,
             message_id: msg.message_id,
@@ -122,7 +161,7 @@ bot.on('message', async(msg) => {
         userStatus(msg.chat.id, { status: false })
 })
 
-schedule.scheduleJob('30 * * * * *', () => {
+schedule.scheduleJob('30 * * * *', () => {
     console.log('data.json saved.')
     jsonfile.writeFileSync('data.json', data)
 });
