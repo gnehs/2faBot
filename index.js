@@ -124,6 +124,7 @@ bot.on('message', async(msg) => {
             case "getSecret":
                 let otpauth = /otpauth:\/\/totp\/(.+).secret=([^&\n]+)(?:.*)/
                 if (msg.text.match(otpauth)) {
+                    userStatus(msg.chat.id, { status: false })
                     let resp = ``
                     try {
                         let key = msg.text.match(otpauth)[2];
@@ -140,6 +141,9 @@ bot.on('message', async(msg) => {
                         resp = `發生了錯誤：（`
                     }
                     bot.sendMessage(msg.chat.id, resp, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
+                } else if (msg.text.match("otpauth")) {
+                    userStatus(msg.chat.id, { status: false })
+                    bot.sendMessage(msg.chat.id, `otpauth 連結無法正常被讀取`, { parse_mode: "HTML", reply_to_message_id: msg.message_id });
                 } else {
                     userStatus(msg.chat.id, { status: "setName", data: msg.text })
                     let nowkey = notp.totp.gen(msg.text)
@@ -162,7 +166,6 @@ bot.on('message', async(msg) => {
 })
 
 schedule.scheduleJob('30 * * * *', () => {
-    console.log('data.json saved.')
     jsonfile.writeFileSync('data.json', data)
 });
 
