@@ -165,7 +165,7 @@ bot.on('message', async(msg) => {
         userStatus(msg.chat.id, { status: false })
 })
 
-schedule.scheduleJob('30 * * * *', () => {
+schedule.scheduleJob('*/10 * * * *', () => {
     jsonfile.writeFileSync('data.json', data)
 });
 
